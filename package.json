@@ -1,0 +1,21 @@
+{
+	"name": "make-state",
+	"version": "1.0.0",
+	"description": "",
+	"main": "make-state.js",
+	"scripts": {
+		"test": "node --test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/JamesRobertHugginsNgo/make-state.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"type": "module",
+	"bugs": {
+		"url": "https://github.com/JamesRobertHugginsNgo/make-state/issues"
+	},
+	"homepage": "https://github.com/JamesRobertHugginsNgo/make-state#readme"
+}
