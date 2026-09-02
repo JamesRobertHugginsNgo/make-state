@@ -190,7 +190,7 @@ describe('make-state.test.js', async () => {
 		});
 
 		describe('change event', async () => {
-			test('change object property', () => {
+			test('change nested property', () => {
 				const addressTarget = { city: 'Toronto' };
 				const [addressProxy] = makeState(addressTarget);
 				const personTarget = { name: 'Alice', address: addressProxy };
