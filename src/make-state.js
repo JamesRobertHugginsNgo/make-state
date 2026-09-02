@@ -65,39 +65,45 @@ export default function makeState(targetObj = {}, format = identityFn) {
 
 	const listeners = new Map();
 	const cleanupOldValue = (property, oldValue) => {
-		if (listeners.has(property) && eventTargetRegistry.has(oldValue)) {
-			const listener = listeners.get(property);
-			listeners.delete(property);
-			const valueEventTarget = eventTargetRegistry.get(oldValue);
-			valueEventTarget.removeEventListener(CHANGE_EVENT_TYPE, listener);
+		if (!listeners.has(property) || !eventTargetRegistry.has(oldValue)) {
+			return;
 		}
+
+		const listener = listeners.get(property);
+		listeners.delete(property);
+		const valueEventTarget = eventTargetRegistry.get(oldValue);
+		valueEventTarget.removeEventListener(CHANGE_EVENT_TYPE, listener);
 	};
 	const setupNewValue = (property, newValue) => {
-		if (newValue !== DELETE && eventTargetRegistry.has(newValue)) {
-			const valueEventTarget = eventTargetRegistry.get(newValue);
-			if (valueEventTarget !== eventTarget) {
-				const listener = (event) => {
-					const { change: detailChange } = event.detail;
-					const { dispatched: detailChangeDispatched } = detailChange;
-					const isDispatched = detailChangeDispatched.has(eventTarget);
-					if (isDispatched) {
-						return;
-					}
+		if (newValue === DELETE || !eventTargetRegistry.has(newValue)) {
+			return;
+		}
 
-					scheduleMicrotask();
-					const { path: detailChangePath } = detailChange;
-					const path = [property, ...detailChangePath];
-					const dispatched = new Set([...detailChangeDispatched, eventTarget]);
-					const change = { ...detailChange, path, dispatched };
-					rawChanges.push(change);
-					if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
-						eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
-					}
-				}
-				listeners.set(property, listener);
-				valueEventTarget.addEventListener(CHANGE_EVENT_TYPE, listener);
+		const valueEventTarget = eventTargetRegistry.get(newValue);
+		if (valueEventTarget === eventTarget) {
+			return;
+		}
+
+		const listener = (event) => {
+			const { change: detailChange } = event.detail;
+			const { dispatched: detailChangeDispatched } = detailChange;
+			const isDispatched = detailChangeDispatched.has(eventTarget);
+			if (isDispatched) {
+				return;
+			}
+
+			scheduleMicrotask();
+			const { path: detailChangePath } = detailChange;
+			const path = [property, ...detailChangePath];
+			const dispatched = new Set([...detailChangeDispatched, eventTarget]);
+			const change = { ...detailChange, path, dispatched };
+			rawChanges.push(change);
+			if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
+				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
 			}
 		}
+		listeners.set(property, listener);
+		valueEventTarget.addEventListener(CHANGE_EVENT_TYPE, listener);
 	};
 	if (Array.isArray(targetObj)) {
 		for (const [index, value] of targetObj.entries()) {
