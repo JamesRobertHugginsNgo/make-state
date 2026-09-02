@@ -167,6 +167,28 @@ describe('make-state.test.js', async () => {
 				assert.strictEqual(result.detail.change.property, '0');
 				assert.strictEqual(result.detail.change.oldValue, 'Alice');
 			});
+
+			test('change array element twice', () => {
+				const target = [];
+				const [proxy, eventTarget] = makeState(target);
+
+				let results = [];
+				const listener = (event) => { results.push(event); };
+				eventTarget.addEventListener(CHANGE_EVENT_TYPE, listener);
+				proxy.push('Alice');
+				proxy.pop();
+				proxy.push('Bob');
+				eventTarget.removeEventListener(CHANGE_EVENT_TYPE, listener);
+
+				assert.strictEqual(results.length, 4);
+				assert.strictEqual(results[0].detail.change.property, '0');
+				assert.strictEqual(results[0].detail.change.oldValue, undefined);
+				assert.strictEqual(results[1].detail.change.property, '0');
+				assert.strictEqual(results[1].detail.change.oldValue, 'Alice');
+				assert.strictEqual(results[2].detail.change.property, 'length'); // array set trap quirk - change visible on pop but not push
+				assert.strictEqual(results[0].detail.change.property, '0');
+				assert.strictEqual(results[0].detail.change.oldValue, undefined);
+			});
 		});
 
 		describe('batched change event', () => { });
