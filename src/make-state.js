@@ -15,7 +15,6 @@ export default function makeState(targetObj = {}, format = identityFn) {
 
 	let rawChanges = [];
 	const scheduleMicrotask = () => {
-
 		const isFirstScheduled = rawChanges.length === 0;
 		if (!isFirstScheduled) {
 			return;
@@ -65,24 +64,17 @@ export default function makeState(targetObj = {}, format = identityFn) {
 	};
 
 	const listeners = new Map();
-	const setProperty = (target, property, value) => {
-		const oldValue = target[property];
-		value = format(value, property, target, proxy, eventTarget);
-		if (value === oldValue) {
-			return true; // same value changes are ignored, along with array method length changes
-		}
-
-		// cleanup
+	const cleanupOldValue = (property, oldValue) => {
 		if (listeners.has(property) && eventTargetRegistry.has(oldValue)) {
 			const listener = listeners.get(property);
 			listeners.delete(property);
 			const valueEventTarget = eventTargetRegistry.get(oldValue);
 			valueEventTarget.removeEventListener(CHANGE_EVENT_TYPE, listener);
 		}
-
-		// setup
-		if (value !== DELETE && eventTargetRegistry.has(value)) {
-			const valueEventTarget = eventTargetRegistry.get(value);
+	};
+	const setupNewValue = (property, newValue) => {
+		if (newValue !== DELETE && eventTargetRegistry.has(newValue)) {
+			const valueEventTarget = eventTargetRegistry.get(newValue);
 			if (valueEventTarget !== eventTarget) {
 				const listener = (event) => {
 					const { change: detailChange } = event.detail;
@@ -106,6 +98,26 @@ export default function makeState(targetObj = {}, format = identityFn) {
 				valueEventTarget.addEventListener(CHANGE_EVENT_TYPE, listener);
 			}
 		}
+	};
+	if (Array.isArray(targetObj)) {
+		for (const [index, value] of targetObj.entries()) {
+			setupNewValue(String(index), value);
+		}
+	} else {
+		for (const [property, value] of Object.entries(targetObj)) {
+			setupNewValue(property, value);
+		}
+	}
+
+	const setProperty = (target, property, value) => {
+		const oldValue = target[property];
+		value = format(value, property, target, proxy, eventTarget);
+		if (value === oldValue) {
+			return true; // same value changes are ignored, along with array method length changes
+		}
+
+		cleanupOldValue(property, oldValue);
+		setupNewValue(property, value);
 
 		const result = value === DELETE
 			? Reflect.deleteProperty(target, property)

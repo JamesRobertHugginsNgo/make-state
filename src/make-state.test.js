@@ -24,7 +24,6 @@ describe('make-state.test.js', async () => {
 	describe('object state', async () => {
 		test('make object state', async () => {
 			const target = { name: 'Alice' };
-
 			const [proxy] = makeState(target);
 
 			assert.strictEqual(typeof proxy, 'object');
@@ -171,5 +170,47 @@ describe('make-state.test.js', async () => {
 		});
 
 		describe('batched change event', () => { });
+	});
+
+	describe('nested state', () => {
+		test('make nested state', () => {
+			const addressTarget = { city: 'Toronto' };
+			const [addressProxy] = makeState(addressTarget);
+			const personTarget = { name: 'Alice', address: addressProxy };
+			const [personProxy] = makeState(personTarget);
+
+			assert.strictEqual(typeof addressProxy, 'object');
+			assert.ok(!Array.isArray(addressProxy));
+			assert.deepEqual(addressTarget, addressProxy);
+			assert.ok(eventTargetRegistry.has(addressProxy));
+			assert.strictEqual(typeof personProxy, 'object');
+			assert.ok(!Array.isArray(personProxy));
+			assert.deepEqual(personTarget, personProxy);
+			assert.ok(eventTargetRegistry.has(personProxy));
+		});
+
+		describe('change event', async () => {
+			test('change object property', () => {
+				const addressTarget = { city: 'Toronto' };
+				const [addressProxy] = makeState(addressTarget);
+				const personTarget = { name: 'Alice', address: addressProxy };
+				const [personProxy, eventTarget] = makeState(personTarget);
+
+				let result;
+				eventTarget.addEventListener(CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
+				personProxy.address.city = 'Vancouver';
+
+				assert.ok(result instanceof CustomEvent);
+				assert.ok('change' in result.detail);
+				assert.strictEqual(result.detail.change.target, addressTarget);
+				assert.strictEqual(result.detail.change.property, 'city');
+				assert.strictEqual(result.detail.change.oldValue, 'Toronto');
+				assert.strictEqual(result.detail.change.proxy, addressProxy);
+				assert.strictEqual(result.detail.change.path[0], 'address');
+				assert.strictEqual(result.detail.change.path[1], 'city');
+				assert.ok(result.detail.change.dispatched instanceof Set);
+				assert.ok(result.detail.change.dispatched.has(eventTarget));
+			});
+		});
 	});
 });
