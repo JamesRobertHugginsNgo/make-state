@@ -191,7 +191,26 @@ describe('make-state.test.js', async () => {
 			});
 		});
 
-		describe('batched change event', () => { });
+		describe('batched change event', () => {
+			test('change array element', async () => {
+				const target = ['Alice'];
+				const [proxy, eventTarget] = makeState(target);
+
+				let result;
+				eventTarget.addEventListener(BATCH_CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
+				proxy.pop();
+				proxy.push('Bob');
+				await Promise.resolve();
+
+				assert.ok(result instanceof CustomEvent);
+				assert.ok('raw' in result.detail);
+				assert.ok(Array.isArray(result.detail.raw));
+				assert.strictEqual(result.detail.raw.length, 3);
+				assert.ok('changes' in result.detail);
+				assert.ok(result.detail.changes instanceof Map);
+				assert.ok(result.detail.changes.has('0'));
+			});
+		});
 	});
 
 	describe('nested state', () => {
