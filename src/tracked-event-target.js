@@ -1,7 +1,7 @@
 // source: https://github.com/JamesRobertHugginsNgo/tracked-event-target/blob/2.0.0/src/tracked-event-target.js
 
 // ls-remote repository: https://github.com/JamesRobertHugginsNgo/tracked-event-target.git
-// ls-remote branch: refs/heads/2x
+// ls-remote branch: refs/heads/2.x.x
 // ls-remote branch sha: e67864e143581ac87cb808ee5df8d2c6657291c0
 
 import ListenerTracker from './event-listener-tracker.js';
