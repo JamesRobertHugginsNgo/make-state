@@ -1,4 +1,4 @@
-// source: https://github.com/JamesRobertHugginsNgo/event-listener-tracker/blob/1.0.1/src/event-listener-tracker.js
+// @source: https://github.com/JamesRobertHugginsNgo/event-listener-tracker/blob/1.0.1/src/event-listener-tracker.js
 
 // @vendor-repo: https://github.com/JamesRobertHugginsNgo/event-listener-tracker.git
 // @vendor-target: refs/heads/vendor/1.x

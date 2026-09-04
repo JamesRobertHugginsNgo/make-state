@@ -1,4 +1,4 @@
-// source: https://github.com/JamesRobertHugginsNgo/tracked-event-target/blob/2.0.0/src/tracked-event-target.js
+// @source: https://github.com/JamesRobertHugginsNgo/tracked-event-target/blob/2.0.0/src/tracked-event-target.js
 
 // @vendor-repo: https://github.com/JamesRobertHugginsNgo/tracked-event-target.git
 // @vendor-target: refs/heads/vendor/2.x
