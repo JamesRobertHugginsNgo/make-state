@@ -1,4 +1,4 @@
-import TrackedEventTarget from './tracked-event-target.js';
+import TrackedEventTarget from './vendor/tracked-event-target.js';
 
 export const CHANGE_EVENT_TYPE = 'change';
 export const BATCH_CHANGE_EVENT_TYPE = 'batchchanges';
@@ -6,6 +6,40 @@ export const BATCH_CHANGE_EVENT_TYPE = 'batchchanges';
 export const DELETE = Symbol();
 
 export const eventTargetRegistry = new WeakMap();
+
+export function makePaths(path) {
+	return path.reduce((acc, curr) => {
+		if (curr instanceof Set) {
+			curr = Array.from(curr);
+		}
+		if (!Array.isArray(curr)) {
+			curr = [curr];
+		}
+		return acc.flatMap((combo) => {
+			return curr.map((item) => { return [...combo, item]; });
+		});
+	}, [[]]);
+}
+
+export function makeKeys(path) {
+	const paths = makePaths(path);
+
+	return paths
+		.filter((path) => {
+			if (path.length === 1) {
+				return true; // path with single segment can be string or symbol and is a valid key
+			}
+			return path.every((segments) => {
+				return typeof segments === 'string';
+			});
+		})
+		.map((path) => {
+			if (path.length === 1) {
+				return path[0]; // path with single segment can be string or symbol and is a valid key
+			}
+			return path.join('.'); // path with multiple segments is joined by dots
+		});
+}
 
 function identityFn(value) {
 	return value;
@@ -36,20 +70,12 @@ export default function makeState(targetObj = {}, format = identityFn) {
 			const changes = new Map();
 			for (const change of raw) {
 				const { path } = change;
-				let key;
-				if (path.length === 1) {
-					key = path[0];
-				} else {
-					const isNotAllString = path.some((element) => {
-						return typeof element !== 'string';
-					});
-					if (isNotAllString) {
-						continue;
+
+				const keys = makeKeys(path);
+				for (const key of keys) {
+					if (!changes.has(key)) {
+						changes.set(key, change);
 					}
-					key = path.join('/');
-				}
-				if (!changes.has(key)) {
-					changes.set(key, change);
 				}
 			}
 			for (const [key, change] of changes) {
@@ -65,44 +91,54 @@ export default function makeState(targetObj = {}, format = identityFn) {
 
 	const listeners = new Map();
 	const cleanupOldValue = (property, oldValue) => {
-		if (!listeners.has(property) || !eventTargetRegistry.has(oldValue)) {
+		if (!listeners.has(oldValue) || !eventTargetRegistry.has(oldValue)) {
 			return;
 		}
 
-		const listener = listeners.get(property);
-		listeners.delete(property);
+		const { listener, properties } = listeners.get(oldValue);
+		properties.delete(property);
+		if (properties.size > 0) {
+			return;
+		}
+
+		listeners.delete(oldValue);
 		const valueEventTarget = eventTargetRegistry.get(oldValue);
 		valueEventTarget.removeEventListener(CHANGE_EVENT_TYPE, listener);
 	};
 	const setupNewValue = (property, newValue) => {
-		if (newValue === DELETE || !eventTargetRegistry.has(newValue)) {
+		if (newValue === DELETE || !eventTargetRegistry.has(newValue) || eventTargetRegistry.get(newValue) === eventTarget) {
+			return;
+		}
+
+		if (listeners.has(newValue)) {
+			const { properties } = listeners.get(newValue);
+			properties.add(property);
 			return;
 		}
 
 		const valueEventTarget = eventTargetRegistry.get(newValue);
-		if (valueEventTarget === eventTarget) {
-			return;
-		}
 
+		const properties = new Set([property]);
 		const listener = (event) => {
 			const { change: detailChange } = event.detail;
-			const { dispatched: detailChangeDispatched } = detailChange;
-			const isDispatched = detailChangeDispatched.has(eventTarget);
+			const { dispatched } = detailChange;
+			const isDispatched = dispatched.has(eventTarget);
 			if (isDispatched) {
 				return;
 			}
 
 			scheduleMicrotask();
+			dispatched.add(eventTarget);
 			const { path: detailChangePath } = detailChange;
-			const path = [property, ...detailChangePath];
-			const dispatched = new Set([...detailChangeDispatched, eventTarget]);
-			const change = { ...detailChange, path, dispatched };
+			const path = [properties, ...detailChangePath];
+			const change = { ...detailChange, path };
 			rawChanges.push(change);
 			if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
-				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
+				const keys = makeKeys(path);
+				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change, keys } }));
 			}
 		}
-		listeners.set(property, listener);
+		listeners.set(property, { listener, properties });
 		valueEventTarget.addEventListener(CHANGE_EVENT_TYPE, listener);
 	};
 	if (Array.isArray(targetObj)) {
@@ -131,17 +167,13 @@ export default function makeState(targetObj = {}, format = identityFn) {
 
 		if (result) {
 			scheduleMicrotask();
-			const change = {
-				target,
-				property,
-				oldValue,
-				proxy,
-				path: [property],
-				dispatched: new Set([eventTarget])
-			};
+			const path = [property];
+			const dispatched = new Set([eventTarget])
+			const change = { target, property, oldValue, proxy, path, dispatched };
 			rawChanges.push(change);
 			if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
-				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
+				const keys = makeKeys(path);
+				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change, keys } }));
 			}
 		}
 

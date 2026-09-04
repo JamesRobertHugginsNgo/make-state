@@ -1,5 +1,5 @@
 import makeState, { BATCH_CHANGE_EVENT_TYPE, CHANGE_EVENT_TYPE, DELETE, eventTargetRegistry } from './make-state.js';
-import TrackedEventTarget from './tracked-event-target.js';
+import TrackedEventTarget from './vendor/tracked-event-target.js';
 
 import test, { describe, mock } from 'node:test';
 import assert from 'node:assert';
@@ -48,6 +48,9 @@ describe('make-state.test.js', async () => {
 				assert.strictEqual(result.detail.change.proxy, proxy);
 				assert.ok(result.detail.change.dispatched instanceof Set);
 				assert.ok(result.detail.change.dispatched.has(eventTarget));
+				assert.ok('keys' in result.detail);
+				assert.strictEqual(result.detail.keys.length, 1);
+				assert.strictEqual(result.detail.keys[0], 'name');
 			});
 
 			test('change object property as insertion', () => {
@@ -102,6 +105,8 @@ describe('make-state.test.js', async () => {
 				eventTarget.addEventListener(BATCH_CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
 				proxy.name = 'Bob';
 				await Promise.resolve();
+
+				console.log(result.detail.changes);
 
 				assert.ok(result instanceof CustomEvent);
 				assert.ok('raw' in result.detail);
@@ -247,7 +252,7 @@ describe('make-state.test.js', async () => {
 				assert.strictEqual(result.detail.change.property, 'city');
 				assert.strictEqual(result.detail.change.oldValue, 'Toronto');
 				assert.strictEqual(result.detail.change.proxy, addressProxy);
-				assert.strictEqual(result.detail.change.path[0], 'address');
+				assert.ok(result.detail.change.path[0].has('address'));
 				assert.strictEqual(result.detail.change.path[1], 'city');
 				assert.ok(result.detail.change.dispatched instanceof Set);
 				assert.ok(result.detail.change.dispatched.has(eventTarget));
