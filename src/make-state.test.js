@@ -46,11 +46,12 @@ describe('make-state.test.js', async () => {
 				assert.strictEqual(result.detail.change.property, 'name');
 				assert.strictEqual(result.detail.change.oldValue, 'Alice');
 				assert.strictEqual(result.detail.change.proxy, proxy);
+				assert.ok(Array.isArray(result.detail.change.path));
+				assert.strictEqual(result.detail.change.path[0], 'name');
+				assert.ok(Array.isArray(result.detail.change.keys));
+				assert.strictEqual(result.detail.change.keys[0], 'name');
 				assert.ok(result.detail.change.dispatched instanceof Set);
 				assert.ok(result.detail.change.dispatched.has(eventTarget));
-				assert.ok('keys' in result.detail);
-				assert.strictEqual(result.detail.keys.length, 1);
-				assert.strictEqual(result.detail.keys[0], 'name');
 			});
 
 			test('change object property as insertion', () => {
@@ -105,8 +106,6 @@ describe('make-state.test.js', async () => {
 				eventTarget.addEventListener(BATCH_CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
 				proxy.name = 'Bob';
 				await Promise.resolve();
-
-				console.log(result.detail.changes);
 
 				assert.ok(result instanceof CustomEvent);
 				assert.ok('raw' in result.detail);

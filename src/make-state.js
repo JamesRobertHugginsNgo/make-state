@@ -69,9 +69,7 @@ export default function makeState(targetObj = {}, format = identityFn) {
 
 			const changes = new Map();
 			for (const change of raw) {
-				const { path } = change;
-
-				const keys = makeKeys(path);
+				const { keys } = change;
 				for (const key of keys) {
 					if (!changes.has(key)) {
 						changes.set(key, change);
@@ -131,11 +129,11 @@ export default function makeState(targetObj = {}, format = identityFn) {
 			dispatched.add(eventTarget);
 			const { path: detailChangePath } = detailChange;
 			const path = [properties, ...detailChangePath];
-			const change = { ...detailChange, path };
+			const keys = makeKeys(path);
+			const change = { ...detailChange, path, keys };
 			rawChanges.push(change);
 			if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
-				const keys = makeKeys(path);
-				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change, keys } }));
+				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
 			}
 		}
 		listeners.set(property, { listener, properties });
@@ -168,12 +166,12 @@ export default function makeState(targetObj = {}, format = identityFn) {
 		if (result) {
 			scheduleMicrotask();
 			const path = [property];
-			const dispatched = new Set([eventTarget])
-			const change = { target, property, oldValue, proxy, path, dispatched };
+			const dispatched = new Set([eventTarget]);
+			const keys = makeKeys(path);
+			const change = { target, property, oldValue, proxy, path, keys, dispatched };
 			rawChanges.push(change);
 			if (eventTarget.canDispatch(CHANGE_EVENT_TYPE)) {
-				const keys = makeKeys(path);
-				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change, keys } }));
+				eventTarget.dispatchEvent(new CustomEvent(CHANGE_EVENT_TYPE, { detail: { change } }));
 			}
 		}
 
