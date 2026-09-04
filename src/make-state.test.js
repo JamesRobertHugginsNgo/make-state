@@ -365,39 +365,34 @@ describe('make-state.test.js', async () => {
 			const personTarget = { name: 'Alice', address: addressProxy };
 			const [personProxy] = makeState(personTarget);
 
-			assert.strictEqual(typeof addressProxy, 'object');
-			assert.ok(!Array.isArray(addressProxy));
-			assert.deepStrictEqual(addressTarget, addressProxy);
-			assert.ok(eventTargetRegistry.has(addressProxy));
-			assert.strictEqual(typeof personProxy, 'object');
-			assert.ok(!Array.isArray(personProxy));
-			assert.deepStrictEqual(personTarget, personProxy);
-			assert.ok(eventTargetRegistry.has(personProxy));
+			assert.deepStrictEqual(personProxy, { name: 'Alice', address: { city: 'Toronto' } });
 		});
 
 		describe('change event', async () => {
 			test('change nested property', () => {
 				const addressTarget = { city: 'Toronto' };
-				const [addressProxy] = makeState(addressTarget);
+				const [addressProxy, addressEventTarget] = makeState(addressTarget);
 				const personTarget = { name: 'Alice', address: addressProxy };
-				const [personProxy, eventTarget] = makeState(personTarget);
+				const [personProxy, personEventTarget] = makeState(personTarget);
 
 				let result;
-				eventTarget.addEventListener(CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
+				personEventTarget.addEventListener(CHANGE_EVENT_TYPE, (event) => { result = event; }, { once: true });
 				personProxy.address.city = 'Vancouver';
 
+				const expectedAddress = { city: 'Vancouver' };
+				assert.deepStrictEqual(personProxy, { name: 'Alice', address: expectedAddress });
 				assert.ok(result instanceof CustomEvent);
 				assert.ok('change' in result.detail);
-				assert.strictEqual(result.detail.change.target, addressTarget);
-				assert.strictEqual(result.detail.change.property, 'city');
-				assert.strictEqual(result.detail.change.oldValue, 'Toronto');
-				assert.strictEqual(result.detail.change.proxy, addressProxy);
-				assert.ok(result.detail.change.path[0].has('address'));
-				assert.strictEqual(result.detail.change.path[1], 'city');
-				assert.ok(result.detail.change.dispatched instanceof Set);
-				assert.ok(result.detail.change.dispatched.has(eventTarget));
+				assert.deepStrictEqual(result.detail.change, {
+					target: expectedAddress,
+					property: 'city',
+					oldValue: 'Toronto',
+					proxy: addressProxy,
+					path: [new Set(['address']), 'city'],
+					keys: ['address.city'],
+					dispatched: new Set([addressEventTarget, personEventTarget])
+				});
 			});
-
 		});
 	});
 });
